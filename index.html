@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanctuary — Fluid Ideas & Echoes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JavaScript Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0e0c;
+            --bg-card: rgba(18, 24, 20, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #e2e8e4;
+            --text-muted: #8c9e93;
+            --accent: #a3b18a;
+            --accent-glow: rgba(163, 177, 138, 0.2);
+            --card-radius: 24px;
+        }
+
+        body.theme-gold {
+            --bg-primary: #12100c;
+            --accent: #e9c46a;
+            --accent-glow: rgba(233, 196, 106, 0.2);
+        }
+        body.theme-midnight {
+            --bg-primary: #080b14;
+            --accent: #90e0ef;
+            --accent-glow: rgba(144, 224, 239, 0.2);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            transition: background-color 1s ease;
+            position: relative;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        header {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 36px 40px 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sanctuary-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.2rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #fff;
+        }
+
+        .sanctuary-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .atmosphere-pills {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .atmos-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .atmos-btn.active, .atmos-btn:hover {
+            background: var(--accent);
+            color: #0f1311;
+            font-weight: 600;
+        }
+
+        .carousel-viewport {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            padding: 20px 0 40px 0;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .carousel-viewport:active {
+            cursor: grabbing;
+        }
+
+        .carousel-track {
+            display: flex;
+            gap: 24px;
+            padding: 0 40px;
+            will-change: transform;
+            transition: transform 0.1s cubic-bezier(0.1, 0.8, 0.3, 1);
+        }
+
+        .carousel-card {
+            min-width: 380px;
+            height: 280px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            padding: 36px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            user-select: none;
+            flex-shrink: 0;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s;
+        }
+
+        .carousel-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            border-color: var(--accent);
+        }
+
+        .carousel-card-tag {
+            align-self: flex-start;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+        }
+
+        .carousel-card-quote {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.35rem;
+            font-style: italic;
+            color: #fff;
+            line-height: 1.5;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+
+        .carousel-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px 60px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 32px;
+        }
+
+        @media(max-width: 950px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+
+        .sanctuary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            height: fit-content;
+        }
+
+        .card-header-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            color: var(--text-main);
+            font-style: italic;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"], textarea, select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 110px;
+            line-height: 1.6;
+        }
+
+        .submit-btn {
+            background: var(--accent);
+            color: #0a0e0c;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            letter-spacing: 0.5px;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .stream-section {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .section-title-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .echo-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .echoes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .echo-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            animation: fadeIn 0.6s ease forwards;
+            transition: transform 0.3s ease, border-color 0.3s;
+        }
+
+        .echo-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .echo-tag {
+            align-self: flex-start;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--accent);
+            border: 1px solid var(--border-color);
+        }
+
+        .echo-quote {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.15rem;
+            line-height: 1.5;
+            color: #fff;
+            font-style: italic;
+        }
+
+        .echo-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+        }
+
+        .author-name {
+            font-weight: 500;
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body class="theme-moss">
+
+    <canvas id="particle-canvas"></canvas>
+
+    <header>
+        <div>
+            <h1 class="sanctuary-title">Sanctuary</h1>
+            <span class="sanctuary-subtitle">Fluid Thoughts & Echo Carousel</span>
+        </div>
+        <div class="atmosphere-pills">
+            <button class="atmos-btn active" onclick="setTheme('moss', this)">Moss</button>
+            <button class="atmos-btn" onclick="setTheme('gold', this)">Amber</button>
+            <button class="atmos-btn" onclick="setTheme('midnight', this)">Midnight</button>
+        </div>
+    </header>
+
+    <div class="carousel-viewport" id="carousel-viewport">
+        <div class="carousel-track" id="carousel-track">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="grid-layout">
+            <form class="sanctuary-card" id="echo-form">
+                <p class="card-header-text">Leave a piece of your mind to float in the quiet...</p>
+                
+                <div class="field-group">
+                    <label>Your Name / Alias</label>
+                    <input type="text" id="author-input" placeholder="Wanderer..." />
+                </div>
+
+                <div class="field-group">
+                    <label>Atmosphere / Mood</label>
+                    <select id="mood-input">
+                        <option value="🌿 Peaceful Reflection">🌿 Peaceful Reflection</option>
+                        <option value="✨ Sudden Inspiration">✨ Sudden Inspiration</option>
+                        <option value="🌧️ Melancholy & Calm">🌧️ Melancholy & Calm</option>
+                        <option value="📜 Life Experience">📜 Life Experience</option>
+                        <option value="💭 Philosophy & Truth">💭 Philosophy & Truth</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Your Quote, Story, or Idea</label>
+                    <textarea id="quote-input" placeholder="Write whatever is resting on your mind right now..."></textarea>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submit-btn">Release Into The Sanctuary</button>
+            </form>
+
+            <div class="stream-section">
+                <div class="section-heading">
+                    <span class="section-title-text">Sanctuary Wall</span>
+                    <span class="echo-count" id="echo-count">0 echoes</span>
+                </div>
+                <div class="echoes-grid" id="echoes-grid">
+                    <!-- Dynamic Cards -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURE YOUR SUPABASE KEYS HERE ---
+        const SUPABASE_URL = 'https://rfbndmfzjvnuucednjfx.supabase.co'; // e.g. 'https://xyz.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmYm5kbWZ6anZudXVjZWRuamZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4Mjc1MzAsImV4cCI6MjEwNzQwMzUzMH0.urjbAs8MCMEKw6MQxcRRhJDdxRz4SfSXjD5FIp41O78'; // e.g. 'eyJhbG...'
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let echoes = [];
+
+        // Fetch quotes from Supabase database
+        async function fetchEchoes() {
+            const { data, error } = await supabaseClient
+                .from('echoes')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching echoes:', error);
+                return;
+            }
+
+            if (data && data.length > 0) {
+                echoes = data;
+            } else {
+                // Default starter quotes if database is empty
+                echoes = [
+                    { author: "Aydin", mood: "🌿 Peaceful Reflection", quote: "Sometimes the quietest hours teach us more than an entire library of noise.", date: "Oct 12, 2026" }
+                ];
+            }
+
+            renderCarousel();
+            renderWall();
+        }
+
+        function renderCarousel() {
+            const track = document.getElementById('carousel-track');
+            track.innerHTML = '';
+            const displayItems = [...echoes, ...echoes];
+
+            displayItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'carousel-card';
+                card.innerHTML = `
+                    <span class="carousel-card-tag">${item.mood}</span>
+                    <p class="carousel-card-quote">"${item.quote}"</p>
+                    <div class="carousel-card-footer">
+                        <span class="author-name">— ${item.author}</span>
+                        <span>${item.date}</span>
+                    </div>
+                `;
+                track.appendChild(card);
+            });
+        }
+
+        function renderWall() {
+            const grid = document.getElementById('echoes-grid');
+            const count = document.getElementById('echo-count');
+            grid.innerHTML = '';
+            count.textContent = `${echoes.length} echo${echoes.length === 1 ? '' : 's'}`;
+
+            echoes.forEach((echo) => {
+                const card = document.createElement('div');
+                card.className = 'echo-card';
+                card.innerHTML = `
+                    <span class="echo-tag">${echo.mood}</span>
+                    <p class="echo-quote">"${echo.quote}"</p>
+                    <div class="echo-footer">
+                        <span class="author-name">— ${echo.author}</span>
+                        <span>${echo.date}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Form submission (saves to Supabase database)
+        document.getElementById('echo-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const author = document.getElementById('author-input').value.trim() || "Anonymous";
+            const mood = document.getElementById('mood-input').value;
+            const quote = document.getElementById('quote-input').value.trim();
+
+            if (!quote) return;
+
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.textContent = "Releasing...";
+            submitBtn.disabled = true;
+
+            const newEcho = {
+                author,
+                mood,
+                quote,
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            };
+
+            const { error } = await supabaseClient.from('echoes').insert([newEcho]);
+
+            if (error) {
+                alert('Error saving quote. Please check your Supabase keys.');
+                console.error(error);
+            } else {
+                document.getElementById('quote-input').value = '';
+                document.getElementById('author-input').value = '';
+                await fetchEchoes(); // Reload from database
+            }
+
+            submitBtn.textContent = "Release Into The Sanctuary";
+            submitBtn.disabled = false;
+        };
+
+        // --- PARTICLE BACKGROUND & THEME ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.speedY = (Math.random() - 0.5) * 0.3 - 0.1;
+                this.alpha = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#a3b18a';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        for (let i = 0; i < 45; i++) particles.push(new Particle());
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        function setTheme(themeName, btn) {
+            document.body.className = 'theme-' + themeName;
+            document.querySelectorAll('.atmos-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // Carousel Drag Support
+        const viewport = document.getElementById('carousel-viewport');
+        let isDown = false, startX, scrollLeft;
+        viewport.addEventListener('mousedown', (e) => { isDown = true; startX = e.pageX - viewport.offsetLeft; scrollLeft = viewport.scrollLeft; });
+        viewport.addEventListener('mouseleave', () => isDown = false);
+        viewport.addEventListener('mouseup', () => isDown = false);
+        viewport.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); viewport.scrollLeft = scrollLeft - ((e.pageX - viewport.offsetLeft) - startX) * 1.5; });
+
+        // Load data on startup
+        window.onload = () => {
+            fetchEchoes();
+        };
+    </script>
+</body>
+</html>
